@@ -714,15 +714,15 @@
             <div class="recording-overlay" id="recordingOverlay">
                 <div class="timer" id="timer">00:00</div>
                 <div class="waveform" id="waveform"></div>
-                <button class="stop-btn" onclick="stopRecording()">停止</button>
-                <div class="recording-hint">再次点击停止录制</div>
+                <button class="stop-btn" id="stopBtn">停止</button>
+                <div class="recording-hint">松手停止录制 · 或点击停止按钮</div>
                 <div class="recording-actions">
                     <div class="action">
                         <button class="action-btn" onclick="cancelRecording()">✕</button>
                         <span class="action-label">取消</span>
                     </div>
                     <div class="action">
-                        <button class="action-btn">🔒</button>
+                        <button class="action-btn" id="lockBtn">🔒</button>
                         <span class="action-label">锁定</span>
                     </div>
                 </div>
@@ -791,7 +791,7 @@
 
         <!-- Record Button -->
         <div class="record-btn-container" id="recordBtnContainer">
-            <button class="record-btn" id="recordBtn" onclick="startRecording()">🎙️</button>
+            <button class="record-btn" id="recordBtn">🎙️</button>
         </div>
     </div>
 </div>
@@ -818,6 +818,62 @@ let exportWithTimestamps = true;
 function init() {
     createWaveformBars();
     renderHome();
+    bindRecordButton();
+}
+
+// ==================== 录制按钮事件绑定 ====================
+function bindRecordButton() {
+    var btn = document.getElementById('recordBtn');
+    var stopBtn = document.getElementById('stopBtn');
+    var lockBtn = document.getElementById('lockBtn');
+    
+    var isLocked = false; // 锁定模式：点击切换，不随松手停止
+
+    // --- 录制按钮：按住开始录制 ---
+    btn.addEventListener('pointerdown', function(e) {
+        e.preventDefault();
+        if (!isRecording) {
+            isLocked = false;
+            startRecording();
+        }
+    });
+
+    btn.addEventListener('pointerup', function(e) {
+        e.preventDefault();
+        if (isRecording && !isLocked) {
+            stopRecording();
+        }
+    });
+
+    // 防止移出按钮区域后不触发 pointerup
+    btn.addEventListener('pointerleave', function(e) {
+        if (isRecording && !isLocked) {
+            stopRecording();
+        }
+    });
+
+    // 防止触摸滚动干扰
+    btn.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+    }, { passive: false });
+
+    // --- 停止按钮：点击停止（锁定模式下用） ---
+    stopBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (isRecording) {
+            stopRecording();
+        }
+    });
+
+    // --- 锁定按钮：锁定后松手不停止 ---
+    lockBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        isLocked = true;
+        showToast('已锁定，点击停止按钮结束录制');
+        lockBtn.textContent = '🔒';
+        lockBtn.style.opacity = '1';
+    });
 }
 
 // ==================== 导航 ====================
