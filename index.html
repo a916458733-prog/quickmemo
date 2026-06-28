@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, maximum-scale=1.0">
+    <title>⚡ 闪电速记 - Demo</title>
+    <style>
+        :root {
+            --brand: #FF6B35;
+            --brand-dark: #E55A2B;
+            --recording-red: #E53935;
+            --bg: #FAFAFA;
+            --surface: #FFFFFF;
+            --surface-variant: #F5F5F5;
+            --text: #1C1B1F;
+            --text-secondary: #999999;
+            --outline: #E0E0E0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100dvh;
+            width: 100vw;
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* 手机壳模拟 */
+        .phone-frame {
+            width: 100%;
+            max-width: 420px;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            background: var(--bg);
+            box-shadow: 0 0 0 1px var(--outline);
+        }
+
+        @media (min-width: 421px) {
+            body { background: #e8e8e8; align-items: center; }
+            .phone-frame {
+                height: min(100dvh, 900px);
+                border-radius: 24px;
+                margin: 16px 0;
+            }
+        }
+
+        /* ===== App Container ===== */
+        .app {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ===== Top Bar ===== */
+        .topbar {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            min-height: 56px;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+        .topbar .title {
+            font-size: 20px;
+            font-weight: 700;
+            flex: 1;
+            transition: all 0.25s;
+        }
+        .topbar .back-btn {
+            width: 36px; height: 36px;
+            border: none; background: none;
+            font-size: 22px; cursor: pointer;
+            margin-right: 8px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+        }
+        .topbar .back-btn:active { background: var(--surface-variant); }
+        .date-filter-btn {
+            display: none;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border: 1px solid var(--outline);
+            border-radius: 20px;
+            background: var(--surface);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+            margin-right: 8px;
+            white-space: nowrap;
+            transition: background 0.15s, border-color 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .date-filter-btn.visible { display: flex; }
+        .date-filter-btn:active { background: var(--surface-variant); border-color: var(--brand); }
+        .date-filter-btn.active { border-color: var(--brand); color: var(--brand); }
+        .topbar .export-btn {
+            width: 36px; height: 36px;
+            border: none; background: none;
+            font-size: 20px; cursor: pointer;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0.5; transition: opacity 0.15s;
+        }
+        .topbar .export-btn:active { opacity: 0.8; }
+
+        /* ===== Pages ===== */
+        .page-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        .page {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0 16px 120px;
+            transition: transform 0.28s cubic-bezier(0.4,0,0.2,1), opacity 0.28s;
+            -webkit-overflow-scrolling: touch;
+        }
+        .page.home {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .page.home.hidden {
+            transform: translateX(-30%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .page.detail {
+            transform: translateX(100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .page.detail.visible {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* ===== Empty State ===== */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--text-secondary);
+            padding-top: 60px;
+        }
+        .empty-state .icon { font-size: 64px; margin-bottom: 16px; line-height: 1; }
+        .empty-state p { font-size: 16px; max-width: 200px; line-height: 1.5; }
+
+        /* ===== Record Button ===== */
+        .record-btn-container {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .record-btn-container.hidden {
+            opacity: 0;
+            transform: translateX(-50%) scale(0.5);
+            pointer-events: none;
+        }
+        .record-btn {
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            border: none;
+            background: radial-gradient(circle at 35% 35%, var(--brand), var(--brand-dark));
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: breathe 2s ease-in-out infinite;
+            -webkit-tap-highlight-color: transparent;
+        }
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); box-shadow: 0 8px 24px rgba(255, 107, 53, 0.35); }
+            50% { transform: scale(1.04); box-shadow: 0 12px 32px rgba(255, 107, 53, 0.45); }
+        }
+        .record-btn:active {
+            transform: scale(0.93) !important;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.5) !important;
+        }
+
+        /* ===== Recording Overlay ===== */
+        .recording-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(180deg, rgba(26,26,26,0.96), rgba(13,13,13,0.98));
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .recording-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .timer {
+            color: white;
+            font-size: 56px;
+            font-weight: 100;
+            margin-bottom: 48px;
+            font-variant-numeric: tabular-nums;
+            font-family: 'SF Mono', 'Menlo', 'Courier New', monospace;
+            letter-spacing: 2px;
+        }
+
+        .waveform {
+            display: flex;
+            gap: 6px;
+            width: 70%;
+            max-width: 280px;
+            height: 44px;
+            align-items: center;
+            margin-bottom: 48px;
+        }
+        .waveform .bar {
+            flex: 1;
+            border-radius: 3px;
+            background: var(--recording-red);
+            min-height: 6px;
+            transition: height 0.08s ease;
+        }
+
+        .stop-btn {
+            width: 88px; height: 88px;
+            border-radius: 50%;
+            border: none;
+            background: var(--recording-red);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            animation: pulse 1.2s ease-in-out infinite;
+            -webkit-tap-highlight-color: transparent;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.5); }
+            50% { box-shadow: 0 0 0 24px rgba(229, 57, 53, 0); }
+        }
+        .stop-btn:active { transform: scale(0.94); }
+
+        .recording-hint {
+            color: rgba(255,255,255,0.5);
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .recording-actions {
+            display: flex;
+            gap: 56px;
+            margin-top: 48px;
+        }
+        .recording-actions .action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .recording-actions .action-btn {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.6);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .recording-actions .action-btn:active { background: rgba(255,255,255,0.15); }
+        .recording-actions .action-label {
+            color: rgba(255,255,255,0.35);
+            font-size: 11px;
+        }
+
+        /* ===== Section Title ===== */
+        .section-title {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 8px 0 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        /* ===== Recording Cards ===== */
+        .recording-card {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            cursor: pointer;
+            transition: transform 0.12s, box-shadow 0.12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .recording-card:active { 
+            transform: scale(0.985); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .card-icon {
+            width: 44px; height: 44px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(255,107,53,0.12), rgba(255,107,53,0.04));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+        .card-info { flex: 1; min-width: 0; }
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+            flex: 1;
+            min-width: 0;
+        }
+        .card-subtitle.custom {
+            color: var(--text);
+            font-weight: 500;
+        }
+        .card-subtitle-wrap {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            cursor: text;
+            border-radius: 6px;
+            padding: 2px 0;
+            transition: background 0.15s;
+        }
+        .card-subtitle-wrap:active { background: var(--surface-variant); }
+        .edit-badge {
+            font-size: 11px;
+            flex-shrink: 0;
+            margin-top: 1px;
+            opacity: 0.6;
+        }
+        .edit-badge-hint {
+            font-size: 10px;
+            color: var(--text-secondary);
+            opacity: 0.4;
+            flex-shrink: 0;
+            white-space: nowrap;
+            margin-top: 2px;
+        }
+        .card-meta {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .card-duration {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--brand);
+            font-variant-numeric: tabular-nums;
+        }
+        .card-speakers {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* ===== Detail Page ===== */
+        .detail-info-card {
+            background: var(--surface-variant);
+            border-radius: 14px;
+            padding: 20px;
+            margin: 4px 0 20px;
+        }
+        .detail-info-card h2 {
+            font-size: 22px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .detail-info-chips {
+            display: flex;
+            gap: 14px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .segment-card {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1.5px solid var(--outline);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .segment-card.playing { 
+            border-color: var(--brand); 
+            background: rgba(255,107,53,0.015);
+        }
+
+        .segment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .speaker-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .speaker-avatar {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .speaker-name { font-size: 14px; font-weight: 600; }
+        .segment-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .segment-waveform {
+            height: 40px;
+            border-radius: 8px;
+            background: var(--surface-variant);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .segment-waveform .progress {
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            background: rgba(255,107,53,0.12);
+            border-radius: 8px;
+            transition: width 0.08s linear;
+        }
+        .segment-waveform .play-icon {
+            font-size: 16px;
+            z-index: 1;
+            transition: transform 0.15s;
+        }
+
+        .segment-text {
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: rgba(245,245,245,0.7);
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* ===== Continue FAB ===== */
+        .fab {
+            position: absolute;
+            bottom: 32px;
+            right: 20px;
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: var(--brand);
+            color: white;
+            font-size: 28px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(255,107,53,0.35);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s;
+            opacity: 0;
+            transform: scale(0);
+            pointer-events: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .fab.visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        .fab:active { transform: scale(0.9) !important; }
+
+        /* ===== Retranscribe Button ===== */
+        .retrans-btn {
+            width: 100%;
+            padding: 14px;
+            border: 1px dashed var(--outline);
+            border-radius: 14px;
+            background: var(--surface);
+            margin: 8px 0 16px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .retrans-btn:active { background: var(--surface-variant); }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #333;
+            color: white;
+            padding: 10px 22px;
+            border-radius: 24px;
+            font-size: 14px;
+            z-index: 300;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===== Modal ===== */
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 250;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-sheet {
+            background: var(--surface);
+            border-radius: 20px 20px 0 0;
+            padding: 24px 20px 40px;
+            width: 100%;
+            max-width: 420px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        .modal-overlay.active .modal-sheet {
+            transform: translateY(0);
+        }
+        .modal-sheet h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .modal-sheet .option-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--outline);
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .modal-sheet .option-row:last-child { border-bottom: none; }
+        .modal-sheet .option-label { font-weight: 500; }
+        .modal-sheet .option-value { color: var(--brand); font-weight: 600; }
+
+        .modal-sheet .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .modal-sheet .btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 14px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .modal-sheet .btn-primary {
+            background: var(--brand);
+            color: white;
+        }
+        .modal-sheet .btn-secondary {
+            background: var(--surface-variant);
+            color: var(--text);
+        }
+        .modal-sheet .btn:active { opacity: 0.8; }
+
+        /* 日期筛选列表 */
+        .date-filter-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 4px;
+            border-bottom: 1px solid var(--outline);
+            cursor: pointer;
+            gap: 12px;
+            transition: background 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .date-filter-item:last-child { border-bottom: none; }
+        .date-filter-item:active { background: var(--surface-variant); }
+        .date-filter-item.selected .date-filter-label { color: var(--brand); font-weight: 700; }
+        .date-filter-label {
+            font-size: 16px;
+            font-weight: 600;
+            min-width: 80px;
+        }
+        .date-filter-date {
+            font-size: 13px;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+        .date-filter-count {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .date-filter-check {
+            width: 20px;
+            text-align: center;
+            color: var(--brand);
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+<div class="phone-frame" id="phoneFrame">
+    <div class="app" id="app">
+        <!-- Top Bar -->
+        <div class="topbar" id="topbar">
+            <button class="back-btn" id="backBtn" onclick="goBack()">←</button>
+            <button class="date-filter-btn" id="dateFilterBtn" onclick="openDateFilter()">📅 全部</button>
+            <span class="title" id="topbarTitle">⚡ 闪电速记</span>
+            <button class="export-btn" id="exportBtn" onclick="openExportModal()" style="display:none">📤</button>
+        </div>
+
+        <!-- Page Container -->
+        <div class="page-container">
+            <!-- Home Page -->
+            <div class="page home" id="homePage">
+                <div id="homeContent"></div>
+            </div>
+
+            <!-- Detail Page -->
+            <div class="page detail" id="detailPage">
+                <div id="detailContent"></div>
+            </div>
+
+            <!-- Recording Overlay -->
+            <div class="recording-overlay" id="recordingOverlay">
+                <div class="timer" id="timer">00:00</div>
+                <div class="waveform" id="waveform"></div>
+                <button class="stop-btn" onclick="stopRecording()">停止</button>
+                <div class="recording-hint">再次点击停止录制</div>
+                <div class="recording-actions">
+                    <div class="action">
+                        <button class="action-btn" onclick="cancelRecording()">✕</button>
+                        <span class="action-label">取消</span>
+                    </div>
+                    <div class="action">
+                        <button class="action-btn">🔒</button>
+                        <span class="action-label">锁定</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Continue FAB -->
+            <button class="fab" id="continueFab" onclick="continueRecording()">＋</button>
+
+            <!-- Toast -->
+            <div class="toast" id="toast"></div>
+
+            <!-- Export Modal -->
+            <div class="modal-overlay" id="exportModal">
+                <div class="modal-sheet">
+                    <h3>导出文档</h3>
+                    <div class="option-row" onclick="toggleExportOption('format')">
+                        <span class="option-label">导出格式</span>
+                        <span class="option-value" id="optFormat">Word (.docx)</span>
+                    </div>
+                    <div class="option-row" onclick="toggleExportOption('speakers')">
+                        <span class="option-label">包含说话人标记</span>
+                        <span class="option-value" id="optSpeakers">是</span>
+                    </div>
+                    <div class="option-row" onclick="toggleExportOption('timestamps')">
+                        <span class="option-label">包含时间戳</span>
+                        <span class="option-value" id="optTimestamps">是</span>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" onclick="closeExportModal()">取消</button>
+                        <button class="btn btn-primary" onclick="doExport()">导出</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Subtitle Modal -->
+            <div class="modal-overlay" id="subtitleModal">
+                <div class="modal-sheet">
+                    <h3>编辑副标题</h3>
+                    <div style="margin-bottom:16px">
+                        <textarea id="subtitleInput" rows="3" placeholder="输入自定义副标题…" style="width:100%;padding:14px;border:1px solid var(--outline);border-radius:12px;font-size:15px;font-family:inherit;resize:none;line-height:1.5;box-sizing:border-box;"></textarea>
+                        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--text-secondary)">
+                            <span id="subtitleHint">默认显示转译摘要，编辑后将使用你的自定义内容</span>
+                            <span><span id="subtitleCount">0</span>/50</span>
+                        </div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" onclick="resetSubtitle()">恢复默认</button>
+                        <button class="btn btn-secondary" onclick="closeSubtitleModal()">取消</button>
+                        <button class="btn btn-primary" onclick="saveSubtitle()">保存</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Date Filter Modal -->
+            <div class="modal-overlay" id="dateFilterModal">
+                <div class="modal-sheet">
+                    <h3>按日期筛选</h3>
+                    <div id="dateFilterList" style="max-height:400px;overflow-y:auto"></div>
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" onclick="clearDateFilter()">清除筛选</button>
+                        <button class="btn btn-primary" onclick="closeDateFilter()">完成</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Record Button -->
+        <div class="record-btn-container" id="recordBtnContainer">
+            <button class="record-btn" id="recordBtn" onclick="startRecording()">🎙️</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== 状态管理 ====================
+let recordings = [];
+let currentRecordingId = null;
+let isRecording = false;
+let recordingStartTime = 0;
+let timerInterval = null;
+let amplitudeInterval = null;
+let currentPage = 'home';
+let playbackInterval = null;
+let currentPlayingIndex = -1;
+let selectedDateFilter = null; // null = 全部，'YYYY-MM-DD' = 按天筛选
+
+// 导出选项
+let exportFormat = 'docx';
+let exportWithSpeakers = true;
+let exportWithTimestamps = true;
+
+// ==================== 初始化 ====================
+function init() {
+    createWaveformBars();
+    renderHome();
+}
+
+// ==================== 导航 ====================
+function goBack() {
+    if (currentPage !== 'detail') return;
+    
+    stopPlayback();
+    currentPage = 'home';
+    currentRecordingId = null;
+    
+    document.getElementById('homePage').classList.remove('hidden');
+    document.getElementById('detailPage').classList.remove('visible');
+    document.getElementById('recordBtnContainer').classList.remove('hidden');
+    document.getElementById('continueFab').classList.remove('visible');
+    document.getElementById('backBtn').style.display = 'none';
+    document.getElementById('exportBtn').style.display = 'none';
+    document.getElementById('topbarTitle').textContent = '⚡ 闪电速记';
+    updateDateFilterBtn();
+}
+
+function openDetail(recordingId) {
+    currentRecordingId = recordingId;
+    currentPage = 'detail';
+    currentPlayingIndex = -1;
+    
+    const rec = recordings.find(r => r.id === recordingId);
+    if (!rec) return;
+    
+    document.getElementById('homePage').classList.add('hidden');
+    document.getElementById('detailPage').classList.add('visible');
+    document.getElementById('recordBtnContainer').classList.add('hidden');
+    document.getElementById('continueFab').classList.add('visible');
+    document.getElementById('backBtn').style.display = 'flex';
+    document.getElementById('exportBtn').style.display = 'flex';
+    document.getElementById('dateFilterBtn').classList.remove('visible');
+    document.getElementById('topbarTitle').textContent = rec.title;
+    
+    renderDetail();
+}
+
+// ==================== 首页渲染 ====================
+function renderHome() {
+    const container = document.getElementById('homeContent');
+    
+    // 更新日期筛选按钮显示状态
+    updateDateFilterBtn();
+    
+    if (recordings.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">🎙️</div>
+                <p>按下下方按钮<br>开始第一次录音吧</p>
+            </div>`;
+        return;
+    }
+
+    // 按日期筛选
+    let filtered = recordings;
+    if (selectedDateFilter) {
+        filtered = recordings.filter(rec => {
+            const recDate = formatDateKey(new Date(rec.createdAt));
+            return recDate === selectedDateFilter;
+        });
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <p>${selectedDateFilter}<br>当天没有录音记录</p>
+            </div>`;
+        return;
+    }
+
+    let sectionLabel = selectedDateFilter 
+        ? formatDateDisplay(selectedDateFilter) + ' · ' + filtered.length + ' 条' 
+        : '最近录音';
+    let html = '<div class="section-title">' + sectionLabel + '</div>';
+    filtered.forEach(rec => {
+        const segments = rec.segments || [];
+        const speakerCount = new Set(segments.map(s => s.speakerLabel).filter(Boolean)).size || 1;
+        
+        // 副标题优先级：手动编辑 > 转译摘要 > 转译中
+        let subtitle = '';
+        let subtitleClass = 'card-subtitle';
+        let editIcon = '';
+        
+        if (rec.customSubtitle && rec.customSubtitle.trim().length > 0) {
+            // 用户手动编辑过
+            subtitle = rec.customSubtitle;
+            subtitleClass += ' custom';
+            editIcon = '<span class="edit-badge">✏️</span>';
+        } else {
+            const allText = segments.map(s => s.textContent || '').filter(t => t.trim().length > 0).join('');
+            if (allText.length > 0) {
+                subtitle = allText.length > 40 ? allText.substring(0, 40) + '…' : allText;
+            } else {
+                subtitle = '转译中…';
+            }
+            editIcon = '<span class="edit-badge-hint">点击编辑</span>';
+        }
+        
+        html += `
+            <div class="recording-card" onclick="openDetail('${rec.id}')">
+                <div class="card-icon">📻</div>
+                <div class="card-info">
+                    <div class="card-title">${rec.title}</div>
+                    <div class="card-subtitle-wrap" onclick="event.stopPropagation(); editSubtitle('${rec.id}')">
+                        <span class="${subtitleClass}">${subtitle}</span>
+                        ${editIcon}
+                    </div>
+                </div>
+                <div class="card-meta">
+                    <div class="card-duration">${formatDuration(rec.totalDurationMs)}</div>
+                    ${speakerCount > 1 ? `<div class="card-speakers">👤 ${speakerCount}人</div>` : ''}
+                </div>
+            </div>`;
+    });
+    container.innerHTML = html;
+}
+
+// ==================== 详情页渲染 ====================
+function renderDetail() {
+    const rec = recordings.find(r => r.id === currentRecordingId);
+    if (!rec) return;
+    
+    const segments = rec.segments || [];
+    const speakerCount = new Set(segments.map(s => s.speakerLabel).filter(Boolean)).size || 1;
+    
+    let html = `
+        <div class="detail-info-card">
+            <h2>${rec.title}</h2>
+            <div class="detail-info-chips">
+                <span>⏱ ${formatDuration(rec.totalDurationMs)}</span>
+                <span>👤 ${speakerCount} 位说话人</span>
+                <span>📝 ${segments.length} 段</span>
+            </div>
+        </div>
+        <div class="section-title">录音段落 (${segments.length})</div>`;
+    
+    segments.forEach((seg, index) => {
+        const speaker = seg.speakerLabel || 'A';
+        const speakerColor = getSpeakerColor(speaker);
+        const hasText = seg.textContent && seg.textContent.trim().length > 0;
+        
+        html += `
+            <div class="segment-card" id="seg-${index}" onclick="playSegment(${index})">
+                <div class="segment-header">
+                    <div class="speaker-badge">
+                        <div class="speaker-avatar" style="background:${speakerColor}">${speaker}</div>
+                        <span class="speaker-name">说话人${speaker}</span>
+                    </div>
+                    <span class="segment-time">${formatDuration(seg.startOffsetMs)} - ${formatDuration(seg.startOffsetMs + seg.durationMs)}</span>
+                </div>
+                <div class="segment-waveform">
+                    <div class="progress" style="width:0%"></div>
+                    <span class="play-icon">▶</span>
+                </div>
+                <div class="segment-text">${hasText ? seg.textContent : '转译文字将在后台自动生成…'}</div>
+            </div>`;
+    });
+    
+    html += `
+        <button class="retrans-btn" onclick="retranscribe()">
+            🔄 重新转译（换模型）
+        </button>
+        <div style="height:80px"></div>`;
+    
+    document.getElementById('detailContent').innerHTML = html;
+}
+
+// ==================== 录制 ====================
+function startRecording() {
+    if (isRecording) return;
+    
+    isRecording = true;
+    recordingStartTime = Date.now();
+    
+    document.getElementById('recordingOverlay').classList.add('active');
+    document.getElementById('recordBtnContainer').classList.add('hidden');
+    document.getElementById('timer').textContent = '00:00';
+    
+    timerInterval = setInterval(updateTimer, 50);
+    amplitudeInterval = setInterval(updateWaveform, 80);
+    
+    showToast('🔴 录制中…');
+}
+
+function stopRecording() {
+    if (!isRecording) return;
+    
+    const elapsed = Date.now() - recordingStartTime;
+    clearInterval(timerInterval);
+    clearInterval(amplitudeInterval);
+    isRecording = false;
+    
+    document.getElementById('recordingOverlay').classList.remove('active');
+    document.getElementById('recordBtnContainer').classList.remove('hidden');
+    
+    // 丢弃 < 1 秒的录音
+    if (elapsed < 1000) {
+        showToast('录音过短，已丢弃');
+        return;
+    }
+    
+    // 模拟多人识别：超过 8 秒算有 2 个说话人
+    const speakerCount = elapsed > 8000 ? 2 : 1;
+    const now = new Date();
+    const title = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    
+    const segments = [];
+    if (speakerCount === 1) {
+        segments.push(makeSegment('', 0, elapsed, 'A'));
+    } else {
+        // 两段交错：说话人A → 说话人B
+        const mid = Math.floor(elapsed * 0.45);
+        segments.push(makeSegment('', 0, mid, 'A'));
+        segments.push(makeSegment('', mid, elapsed - mid, 'B'));
+    }
+    
+    const recording = {
+        id: generateId(),
+        title: title,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        totalDurationMs: elapsed,
+        speakerCount: speakerCount,
+        segmentCount: segments.length,
+        segments: segments
+    };
+    
+    segments.forEach(s => s.recordingId = recording.id);
+    recordings.unshift(recording);
+    
+    renderHome();
+    showToast('✅ 录音已保存');
+    
+    // 模拟后台转译：2 秒后自动填充文字
+    scheduleMockTranscription(recording.id, 2000);
+}
+
+function cancelRecording() {
+    if (!isRecording) return;
+    clearInterval(timerInterval);
+    clearInterval(amplitudeInterval);
+    isRecording = false;
+    document.getElementById('recordingOverlay').classList.remove('active');
+    document.getElementById('recordBtnContainer').classList.remove('hidden');
+    showToast('已取消录制');
+}
+
+// ==================== 续录 ====================
+function continueRecording() {
+    if (!currentRecordingId) return;
+    const rec = recordings.find(r => r.id === currentRecordingId);
+    if (!rec) return;
+    
+    showToast('🔴 续录中…（模拟）');
+    
+    // 模拟 3 秒续录
+    setTimeout(() => {
+        const segments = rec.segments || [];
+        const lastOffset = segments.length > 0
+            ? segments[segments.length - 1].startOffsetMs + segments[segments.length - 1].durationMs
+            : 0;
+        
+        const lastSpeaker = segments.length > 0 ? segments[segments.length - 1].speakerLabel : 'A';
+        const newSpeaker = lastSpeaker === 'A' ? 'B' : 'A';
+        const duration = 2000 + Math.floor(Math.random() * 3000);
+        
+        rec.segments.push(makeSegment(rec.id, lastOffset, duration, newSpeaker));
+        rec.totalDurationMs += duration;
+        rec.segmentCount = rec.segments.length;
+        rec.speakerCount = new Set(rec.segments.map(s => s.speakerLabel)).size;
+        rec.updatedAt = Date.now();
+        
+        renderDetail();
+        renderHome();
+        showToast('✅ 续录完成');
+        
+        // 模拟转译新段落
+        scheduleMockTranscription(rec.id, 1500);
+    }, 1500);
+}
+
+// ==================== 播放 ====================
+function playSegment(index) {
+    stopPlayback();
+    
+    const rec = recordings.find(r => r.id === currentRecordingId);
+    if (!rec) return;
+    const seg = rec.segments[index];
+    if (!seg) return;
+    
+    currentPlayingIndex = index;
+    
+    const card = document.getElementById('seg-' + index);
+    if (!card) return;
+    
+    card.classList.add('playing');
+    const progressBar = card.querySelector('.progress');
+    const playIcon = card.querySelector('.play-icon');
+    if (playIcon) playIcon.textContent = '⏸';
+    
+    const startTime = Date.now();
+    const duration = seg.durationMs;
+    
+    playbackInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration * 100, 100);
+        if (progressBar) progressBar.style.width = progress + '%';
+        
+        if (elapsed >= duration) {
+            stopPlayback();
+        }
+    }, 50);
+}
+
+function stopPlayback() {
+    if (playbackInterval) clearInterval(playbackInterval);
+    playbackInterval = null;
+    currentPlayingIndex = -1;
+    
+    document.querySelectorAll('.segment-card.playing').forEach(c => c.classList.remove('playing'));
+    document.querySelectorAll('.segment-waveform .progress').forEach(p => p.style.width = '0%');
+    document.querySelectorAll('.segment-waveform .play-icon').forEach(i => i.textContent = '▶');
+}
+
+// ==================== 转译模拟 ====================
+function scheduleMockTranscription(recordingId, delay) {
+    setTimeout(() => {
+        const rec = recordings.find(r => r.id === recordingId);
+        if (!rec) return;
+        
+        const mockTexts = [
+            "我觉得下个季度的产品路线图应该优先考虑用户体验的提升，特别是在移动端的交互优化方面需要投入更多资源。",
+            "我同意这个方向，但是我们也需要平衡技术债务的清理工作，不能一味追求新功能而忽视系统的稳定性。",
+            "从数据来看，用户留存率在过去两个月有所下降，这可能和最近的改版有关，需要进一步分析用户行为数据。",
+            "建议先做一个小范围的 A/B 测试，验证新方案的效果之后再决定是否全量上线。",
+            "关于资源投入的问题，我觉得可以先从现有团队中抽调两个人来做这个项目的前期探索工作。",
+            "好的，那我先整理一下会议纪要，明天之前发给大家确认，下周我们再对齐具体的执行计划。"
+        ];
+        
+        rec.segments.forEach((seg, i) => {
+            if (!seg.textContent || seg.textContent.trim() === '') {
+                seg.textContent = mockTexts[(i + Math.floor(Math.random() * 3)) % mockTexts.length];
+            }
+        });
+        
+        // 如果当前在详情页，刷新
+        if (currentRecordingId === recordingId && currentPage === 'detail') {
+            renderDetail();
+        }
+        renderHome();
+        
+        showToast('✨ 转译完成');
+    }, delay);
+}
+
+function retranscribe() {
+    const rec = recordings.find(r => r.id === currentRecordingId);
+    if (!rec) return;
+    
+    showToast('🔄 正在重新转译…');
+    
+    // 清空旧文字
+    rec.segments.forEach(s => s.textContent = '');
+    renderDetail();
+    
+    // 模拟换模型重新转译
+    scheduleMockTranscription(rec.id, 2500);
+}
+
+// ==================== 导出 ====================
+function openExportModal() {
+    document.getElementById('exportModal').classList.add('active');
+}
+
+function closeExportModal() {
+    document.getElementById('exportModal').classList.remove('active');
+}
+
+function toggleExportOption(type) {
+    if (type === 'format') {
+        exportFormat = exportFormat === 'docx' ? 'txt' : 'docx';
+        document.getElementById('optFormat').textContent = exportFormat === 'docx' ? 'Word (.docx)' : '纯文本 (.txt)';
+    } else if (type === 'speakers') {
+        exportWithSpeakers = !exportWithSpeakers;
+        document.getElementById('optSpeakers').textContent = exportWithSpeakers ? '是' : '否';
+    } else if (type === 'timestamps') {
+        exportWithTimestamps = !exportWithTimestamps;
+        document.getElementById('optTimestamps').textContent = exportWithTimestamps ? '是' : '否';
+    }
+}
+
+function doExport() {
+    closeExportModal();
+    const formatLabel = exportFormat === 'docx' ? 'Word' : 'TXT';
+    showToast('📤 正在导出 ' + formatLabel + '…');
+    
+    setTimeout(() => {
+        showToast('✅ 导出完成！(' + formatLabel + ')');
+    }, 1500);
+}
+
+// ==================== 副标题编辑 ====================
+let editingSubtitleId = null;
+
+function editSubtitle(recordingId) {
+    editingSubtitleId = recordingId;
+    const rec = recordings.find(r => r.id === recordingId);
+    if (!rec) return;
+    
+    // 如果有手动编辑过的副标题，显示它；否则显示转译摘要
+    let currentText = '';
+    if (rec.customSubtitle && rec.customSubtitle.trim().length > 0) {
+        currentText = rec.customSubtitle;
+    } else {
+        const segments = rec.segments || [];
+        const allText = segments.map(s => s.textContent || '').filter(t => t.trim().length > 0).join('');
+        currentText = allText.length > 40 ? allText.substring(0, 40) : allText;
+    }
+    
+    const input = document.getElementById('subtitleInput');
+    input.value = currentText;
+    document.getElementById('subtitleCount').textContent = currentText.length;
+    
+    // 更新提示
+    if (rec.customSubtitle && rec.customSubtitle.trim().length > 0) {
+        document.getElementById('subtitleHint').textContent = '当前为自定义副标题';
+    } else {
+        document.getElementById('subtitleHint').textContent = '默认显示转译摘要，编辑后将使用你的自定义内容';
+    }
+    
+    document.getElementById('subtitleModal').classList.add('active');
+    
+    // 自动聚焦
+    setTimeout(() => { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }, 300);
+}
+
+function closeSubtitleModal() {
+    document.getElementById('subtitleModal').classList.remove('active');
+    editingSubtitleId = null;
+}
+
+function saveSubtitle() {
+    if (!editingSubtitleId) return;
+    const rec = recordings.find(r => r.id === editingSubtitleId);
+    if (!rec) return;
+    
+    const newSubtitle = document.getElementById('subtitleInput').value.trim();
+    if (newSubtitle.length === 0) {
+        showToast('请输入内容');
+        return;
+    }
+    if (newSubtitle.length > 50) {
+        showToast('最多 50 字');
+        return;
+    }
+    
+    rec.customSubtitle = newSubtitle;
+    rec.updatedAt = Date.now();
+    
+    closeSubtitleModal();
+    renderHome();
+    showToast('✅ 副标题已更新');
+}
+
+function resetSubtitle() {
+    if (!editingSubtitleId) return;
+    const rec = recordings.find(r => r.id === editingSubtitleId);
+    if (!rec) return;
+    
+    rec.customSubtitle = '';
+    rec.updatedAt = Date.now();
+    
+    closeSubtitleModal();
+    renderHome();
+    showToast('已恢复为转译摘要');
+}
+
+// 副标题输入字数统计
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('subtitleInput');
+    if (input) {
+        input.addEventListener('input', function() {
+            document.getElementById('subtitleCount').textContent = this.value.length;
+        });
+    }
+});
+
+// ==================== 日期筛选 ====================
+function formatDateKey(date) {
+    var y = date.getFullYear();
+    var m = String(date.getMonth() + 1).padStart(2, '0');
+    var d = String(date.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+}
+
+function formatDateDisplay(dateKey) {
+    // "2025-07-11" → "7月11日" 或 "今天"/"昨天"
+    var today = formatDateKey(new Date());
+    var yesterday = formatDateKey(new Date(Date.now() - 86400000));
+    if (dateKey === today) return '今天';
+    if (dateKey === yesterday) return '昨天';
+    var parts = dateKey.split('-');
+    return parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日';
+}
+
+function updateDateFilterBtn() {
+    var btn = document.getElementById('dateFilterBtn');
+    if (currentPage === 'home') {
+        btn.classList.add('visible');
+        if (selectedDateFilter) {
+            btn.textContent = '📅 ' + formatDateDisplay(selectedDateFilter);
+            btn.classList.add('active');
+        } else {
+            btn.textContent = '📅 全部';
+            btn.classList.remove('active');
+        }
+    } else {
+        btn.classList.remove('visible');
+    }
+}
+
+function openDateFilter() {
+    // 收集所有有录音的日期
+    var dateSet = {};
+    recordings.forEach(function(rec) {
+        var key = formatDateKey(new Date(rec.createdAt));
+        if (!dateSet[key]) dateSet[key] = 0;
+        dateSet[key]++;
+    });
+
+    // 按日期倒序排列
+    var dates = Object.keys(dateSet).sort().reverse();
+
+    var list = document.getElementById('dateFilterList');
+    var html = '';
+
+    // "全部" 选项
+    html += '<div class="date-filter-item' + (selectedDateFilter === null ? ' selected' : '') + '" onclick="selectDateFilter(null)">';
+    html += '<span class="date-filter-label">全部录音</span>';
+    html += '<span class="date-filter-count">' + recordings.length + ' 条</span>';
+    html += '<span class="date-filter-check">' + (selectedDateFilter === null ? '✓' : '') + '</span>';
+    html += '</div>';
+
+    // 各日期
+    dates.forEach(function(date) {
+        var isSelected = selectedDateFilter === date;
+        html += '<div class="date-filter-item' + (isSelected ? ' selected' : '') + '" onclick="selectDateFilter(\'' + date + '\')">';
+        html += '<span class="date-filter-label">' + formatDateDisplay(date) + '</span>';
+        html += '<span class="date-filter-date">' + date + '</span>';
+        html += '<span class="date-filter-count">' + dateSet[date] + ' 条</span>';
+        html += '<span class="date-filter-check">' + (isSelected ? '✓' : '') + '</span>';
+        html += '</div>';
+    });
+
+    if (dates.length === 0) {
+        html = '<div style="text-align:center;padding:40px;color:var(--text-secondary);font-size:14px">暂无录音记录</div>';
+    }
+
+    list.innerHTML = html;
+    document.getElementById('dateFilterModal').classList.add('active');
+}
+
+function closeDateFilter() {
+    document.getElementById('dateFilterModal').classList.remove('active');
+}
+
+function selectDateFilter(date) {
+    selectedDateFilter = date;
+    closeDateFilter();
+    renderHome();
+    if (date) {
+        showToast('已筛选: ' + formatDateDisplay(date));
+    } else {
+        showToast('已显示全部录音');
+    }
+}
+
+function clearDateFilter() {
+    selectedDateFilter = null;
+    closeDateFilter();
+    renderHome();
+    showToast('已清除筛选');
+}
+
+// ==================== UI 辅助 ====================
+function updateTimer() {
+    const elapsed = Date.now() - recordingStartTime;
+    document.getElementById('timer').textContent = formatDuration(elapsed);
+}
+
+function updateWaveform() {
+    const bars = document.querySelectorAll('.waveform .bar');
+    bars.forEach(bar => {
+        const h = 6 + Math.random() * 34;
+        bar.style.height = h + 'px';
+    });
+}
+
+function createWaveformBars() {
+    const container = document.getElementById('waveform');
+    container.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.height = '8px';
+        container.appendChild(bar);
+    }
+}
+
+// ==================== 工具函数 ====================
+function formatDuration(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+}
+
+function generateId() {
+    return 'r_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function makeSegment(recordingId, offset, duration, speakerLabel) {
+    return {
+        id: generateId(),
+        recordingId: recordingId,
+        speakerLabel: speakerLabel,
+        audioFilePath: '',
+        startOffsetMs: offset,
+        durationMs: duration,
+        textContent: '',
+        createdAt: Date.now()
+    };
+}
+
+function getSpeakerColor(label) {
+    const colors = { 'A': '#FF6B35', 'B': '#5C6BC0', 'C': '#26A69A', 'D': '#AB47BC' };
+    return colors[label] || '#78909C';
+}
+
+let toastTimer = null;
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    if (toastTimer) clearTimeout(toastTimer);
+    toast.textContent = msg;
+    toast.classList.add('show');
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// 点击遮罩关闭弹窗
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'exportModal') closeExportModal();
+    if (e.target.id === 'subtitleModal') closeSubtitleModal();
+    if (e.target.id === 'dateFilterModal') closeDateFilter();
+});
+
+// ==================== 启动 ====================
+init();
+console.log('⚡ 闪电速记 Demo 已就绪');
+console.log('💡 点击底部橙色大按钮开始体验');
+console.log('📋 功能：录制 → 列表 → 详情（逐段播放+说话人）→ 续录 → 导出');
+console.log('🔄 模拟后台转译：录制后 2 秒自动填充文字');
+</script>
+
+</body>
+</html>
