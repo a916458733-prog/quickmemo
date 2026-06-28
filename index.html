@@ -828,6 +828,7 @@ function bindRecordButton() {
     var btn = document.getElementById('recordBtn');
     var stopBtn = document.getElementById('stopBtn');
     var lockBtn = document.getElementById('lockBtn');
+    var pointerDownTime = 0; // 记录按下时间，区分点击 vs 长按
 
     // --- 录制按钮：按住开始录制 ---
     btn.addEventListener('pointerdown', function(e) {
@@ -835,6 +836,7 @@ function bindRecordButton() {
         if (!isRecording) {
             isLocked = false;
             resetLockButton();
+            pointerDownTime = Date.now();
             startRecording();
             // 捕获指针，确保松手时能收到 pointerup（即使按钮被隐藏）
             try { btn.setPointerCapture(e.pointerId); } catch(_) {}
@@ -843,7 +845,18 @@ function bindRecordButton() {
 
     // pointerup 绑在 window 上，确保即使按钮隐藏也能触发
     window.addEventListener('pointerup', function(e) {
-        if (isRecording && !isLocked) {
+        if (!isRecording || isLocked) return;
+        
+        var holdDuration = Date.now() - pointerDownTime;
+        if (holdDuration < 300) {
+            // 快速点击（< 300ms）→ 进入锁定模式，不停止
+            isLocked = true;
+            lockBtn.textContent = '🔓';
+            lockBtn.style.background = 'var(--brand)';
+            lockBtn.style.color = 'white';
+            showToast('点击模式 · 点停止按钮结束录制');
+        } else {
+            // 长按（≥ 300ms）→ 松手停止
             stopRecording();
         }
     });
