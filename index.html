@@ -692,7 +692,7 @@
     <div class="app" id="app">
         <!-- Top Bar -->
         <div class="topbar" id="topbar">
-            <button class="back-btn" id="backBtn" onclick="goBack()">←</button>
+            <button class="back-btn" id="backBtn" onclick="goBack()" style="display:none">←</button>
             <button class="date-filter-btn" id="dateFilterBtn" onclick="openDateFilter()">📅 全部</button>
             <span class="title" id="topbarTitle">⚡ 闪电速记</span>
             <button class="export-btn" id="exportBtn" onclick="openExportModal()" style="display:none">📤</button>
@@ -715,7 +715,7 @@
                 <div class="timer" id="timer">00:00</div>
                 <div class="waveform" id="waveform"></div>
                 <button class="stop-btn" id="stopBtn">停止</button>
-                <div class="recording-hint">松手停止录制 · 或点击停止按钮</div>
+                <div class="recording-hint">松手停止 · 点🔒锁定后点停止按钮</div>
                 <div class="recording-actions">
                     <div class="action">
                         <button class="action-btn" onclick="cancelRecording()">✕</button>
@@ -822,31 +822,34 @@ function init() {
 }
 
 // ==================== 录制按钮事件绑定 ====================
+var isLocked = false; // 锁定模式：点击切换，不随松手停止
+
 function bindRecordButton() {
     var btn = document.getElementById('recordBtn');
     var stopBtn = document.getElementById('stopBtn');
     var lockBtn = document.getElementById('lockBtn');
-    
-    var isLocked = false; // 锁定模式：点击切换，不随松手停止
 
     // --- 录制按钮：按住开始录制 ---
     btn.addEventListener('pointerdown', function(e) {
         e.preventDefault();
         if (!isRecording) {
             isLocked = false;
+            resetLockButton();
             startRecording();
+            // 捕获指针，确保松手时能收到 pointerup（即使按钮被隐藏）
+            try { btn.setPointerCapture(e.pointerId); } catch(_) {}
         }
     });
 
-    btn.addEventListener('pointerup', function(e) {
-        e.preventDefault();
+    // pointerup 绑在 window 上，确保即使按钮隐藏也能触发
+    window.addEventListener('pointerup', function(e) {
         if (isRecording && !isLocked) {
             stopRecording();
         }
     });
 
-    // 防止移出按钮区域后不触发 pointerup
-    btn.addEventListener('pointerleave', function(e) {
+    // pointercancel：系统中断（来电等）
+    window.addEventListener('pointercancel', function(e) {
         if (isRecording && !isLocked) {
             stopRecording();
         }
@@ -860,6 +863,7 @@ function bindRecordButton() {
     // --- 停止按钮：点击停止（锁定模式下用） ---
     stopBtn.addEventListener('click', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         if (isRecording) {
             stopRecording();
         }
@@ -869,11 +873,30 @@ function bindRecordButton() {
     lockBtn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        isLocked = true;
-        showToast('已锁定，点击停止按钮结束录制');
-        lockBtn.textContent = '🔒';
-        lockBtn.style.opacity = '1';
+        if (!isRecording) return;
+        if (isLocked) {
+            // 解锁
+            isLocked = false;
+            resetLockButton();
+            showToast('已解锁，松手将停止录制');
+        } else {
+            // 锁定
+            isLocked = true;
+            lockBtn.textContent = '🔓';
+            lockBtn.style.background = 'var(--brand)';
+            lockBtn.style.color = 'white';
+            showToast('已锁定，点击停止按钮结束录制');
+        }
     });
+}
+
+function resetLockButton() {
+    var lockBtn = document.getElementById('lockBtn');
+    if (lockBtn) {
+        lockBtn.textContent = '🔒';
+        lockBtn.style.background = '';
+        lockBtn.style.color = '';
+    }
 }
 
 // ==================== 导航 ====================
@@ -895,6 +918,7 @@ function goBack() {
 }
 
 function openDetail(recordingId) {
+    stopPlayback();
     currentRecordingId = recordingId;
     currentPage = 'detail';
     currentPlayingIndex = -1;
@@ -980,9 +1004,9 @@ function renderHome() {
             <div class="recording-card" onclick="openDetail('${rec.id}')">
                 <div class="card-icon">📻</div>
                 <div class="card-info">
-                    <div class="card-title">${rec.title}</div>
+                    <div class="card-title">${escapeHtml(rec.title)}</div>
                     <div class="card-subtitle-wrap" onclick="event.stopPropagation(); editSubtitle('${rec.id}')">
-                        <span class="${subtitleClass}">${subtitle}</span>
+                        <span class="${subtitleClass}">${escapeHtml(subtitle)}</span>
                         ${editIcon}
                     </div>
                 </div>
@@ -1005,7 +1029,7 @@ function renderDetail() {
     
     let html = `
         <div class="detail-info-card">
-            <h2>${rec.title}</h2>
+            <h2>${escapeHtml(rec.title)}</h2>
             <div class="detail-info-chips">
                 <span>⏱ ${formatDuration(rec.totalDurationMs)}</span>
                 <span>👤 ${speakerCount} 位说话人</span>
@@ -1032,7 +1056,7 @@ function renderDetail() {
                     <div class="progress" style="width:0%"></div>
                     <span class="play-icon">▶</span>
                 </div>
-                <div class="segment-text">${hasText ? seg.textContent : '转译文字将在后台自动生成…'}</div>
+                <div class="segment-text">${hasText ? escapeHtml(seg.textContent) : '转译文字将在后台自动生成…'}</div>
             </div>`;
     });
     
@@ -1133,8 +1157,17 @@ function continueRecording() {
     
     showToast('🔴 续录中…（模拟）');
     
+    // 记录当前录音 ID，防止切换后渲染错位
+    const targetRecId = currentRecordingId;
+    
     // 模拟 3 秒续录
     setTimeout(() => {
+        // 检查是否还在同一条录音的详情页
+        if (currentRecordingId !== targetRecId || currentPage !== 'detail') {
+            // 用户已离开，数据已写入但不需要刷新 UI
+            return;
+        }
+        
         const segments = rec.segments || [];
         const lastOffset = segments.length > 0
             ? segments[segments.length - 1].startOffsetMs + segments[segments.length - 1].durationMs
@@ -1150,6 +1183,7 @@ function continueRecording() {
         rec.speakerCount = new Set(rec.segments.map(s => s.speakerLabel)).size;
         rec.updatedAt = Date.now();
         
+        stopPlayback();
         renderDetail();
         renderHome();
         showToast('✅ 续录完成');
@@ -1161,6 +1195,16 @@ function continueRecording() {
 
 // ==================== 播放 ====================
 function playSegment(index) {
+    // toggle：如果点击正在播放的段落，暂停/恢复
+    if (currentPlayingIndex === index) {
+        var state = document.getElementById('seg-' + index);
+        if (state && state.classList.contains('playing')) {
+            // 正在播放 → 停止
+            stopPlayback();
+            return;
+        }
+    }
+    
     stopPlayback();
     
     const rec = recordings.find(r => r.id === currentRecordingId);
@@ -1223,8 +1267,9 @@ function scheduleMockTranscription(recordingId, delay) {
             }
         });
         
-        // 如果当前在详情页，刷新
+        // 如果当前在详情页，先停止播放再刷新（避免 DOM 引用丢失）
         if (currentRecordingId === recordingId && currentPage === 'detail') {
+            stopPlayback();
             renderDetail();
         }
         renderHome();
@@ -1237,6 +1282,7 @@ function retranscribe() {
     const rec = recordings.find(r => r.id === currentRecordingId);
     if (!rec) return;
     
+    stopPlayback();
     showToast('🔄 正在重新转译…');
     
     // 清空旧文字
@@ -1496,7 +1542,14 @@ function formatDuration(ms) {
 }
 
 function generateId() {
-    return 'r_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    return 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function makeSegment(recordingId, offset, duration, speakerLabel) {
